@@ -169,45 +169,45 @@ module angled_remote_holder() {
 //   8. vertical_ribs_on_front
 // ════════════════════════════════════════════
 module vertical_ribs_on_front() {
-    if (!enable_ribs) return;
+    if (enable_ribs) {
+        // Nervuras na face frontal da bandeja (y = 0, exterior)
+        // Começa após o porta-controle, termina antes da curva final
+        x_start = holder_length + rib_spacing * 2;
+        x_end   = total_length - corner_radius * 1.3;
 
-    // Nervuras na face frontal da bandeja (y = 0, exterior)
-    // Começa após o porta-controle, termina antes da curva final
-    x_start = holder_length + rib_spacing * 2;
-    x_end   = total_length - corner_radius * 1.3;
-
-    for (x = [x_start : rib_spacing : x_end])
-        translate([x, -rib_depth, 0])
-            cube([rib_width, rib_depth, tray_height]);
+        for (x = [x_start : rib_spacing : x_end])
+            translate([x, -rib_depth, 0])
+                cube([rib_width, rib_depth, tray_height]);
+    }
 }
 
 // ════════════════════════════════════════════
 //   9. vertical_ribs_on_holder
 // ════════════════════════════════════════════
 module vertical_ribs_on_holder() {
-    if (!enable_ribs) return;
+    if (enable_ribs) {
+        hl  = holder_length;
+        hw  = holder_width;
+        hfh = holder_front_height;
+        hbh = holder_back_height;
+        cr  = holder_corner_r;
+        y0  = (total_width - hw) / 2;
 
-    hl  = holder_length;
-    hw  = holder_width;
-    hfh = holder_front_height;
-    hbh = holder_back_height;
-    cr  = holder_corner_r;
-    y0  = (total_width - hw) / 2;
+        // ── Face frontal do porta-controle (y = y0) ───────────
+        for (x = [cr + rib_spacing : rib_spacing : hl - cr - rib_width])
+            translate([x, y0 - rib_depth, 0])
+                cube([rib_width, rib_depth, hfh]);
 
-    // ── Face frontal do porta-controle (y = y0) ───────────
-    for (x = [cr + rib_spacing : rib_spacing : hl - cr - rib_width])
-        translate([x, y0 - rib_depth, 0])
-            cube([rib_width, rib_depth, hfh]);
+        // ── Face traseira do porta-controle (y = y0 + hw) ─────
+        for (x = [cr + rib_spacing : rib_spacing : hl - cr - rib_width])
+            translate([x, y0 + hw, 0])
+                cube([rib_width, rib_depth, hbh]);
 
-    // ── Face traseira do porta-controle (y = y0 + hw) ─────
-    for (x = [cr + rib_spacing : rib_spacing : hl - cr - rib_width])
-        translate([x, y0 + hw, 0])
-            cube([rib_width, rib_depth, hbh]);
-
-    // ── Face esquerda / lateral (x = 0, acima da bandeja) ─
-    for (y = [y0 + cr + rib_spacing : rib_spacing : y0 + hw - cr - rib_width])
-        translate([-rib_depth, y, tray_height])
-            cube([rib_depth, rib_width, hbh - tray_height]);
+        // ── Face esquerda / lateral (x = 0, acima da bandeja) ─
+        for (y = [y0 + cr + rib_spacing : rib_spacing : y0 + hw - cr - rib_width])
+            translate([-rib_depth, y, tray_height])
+                cube([rib_depth, rib_width, hbh - tray_height]);
+    }
 }
 
 // ════════════════════════════════════════════
