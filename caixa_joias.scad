@@ -1,94 +1,83 @@
-// Caixa Organizadora de Joias
-// Dimensões: 150mm x 120mm x 100mm
+// Bandeja Canelada - Organizadora de Joias
+// Estilo: caneluras verticais, forma oval, borda ondulada
 
 // === PARÂMETROS ===
-comp  = 150;   // comprimento (X)
-larg  = 120;   // largura (Y)
-alt   = 100;   // altura total (Z)
-esp   = 3;     // espessura das paredes
-r_ext = 4;     // raio do arredondamento externo
-tampa_alt = 35; // altura da tampa
+comp    = 150;  // comprimento total
+larg    = 120;  // largura total
+alt     = 70;   // altura da bandeja (ajuste conforme desejado)
+base_h  = 3;    // espessura da base
+flute_r = 6;    // raio de cada canelura
+wall    = 3;    // espessura da parede interna
+$fn     = 40;
 
-// Altura do corpo (sem a tampa)
-corpo_alt = alt - tampa_alt;
+// === GEOMETRIA ===
+R      = larg / 2;               // raio das extremidades = 60
+str    = comp - larg;            // trecho reto lateral = 30
+R_cav  = R - flute_r - wall;    // raio da cavidade interna = 51
+
+// Número de caneluras distribuídas
+n_semi = max(6, round(PI * R / (flute_r * 2)));       // por semicírculo (~16)
+n_str  = max(0, round(str / (flute_r * 2) - 0.5));   // no trecho reto (~2)
 
 // === MÓDULOS ===
 
-// Caixa arredondada
-module caixa_arredondada(cx, cy, cz, r, espessura) {
-    difference() {
-        // Externo
-        hull() {
-            for (x = [r, cx - r])
-                for (y = [r, cy - r])
-                    translate([x, y, 0])
-                        cylinder(r=r, h=cz, $fn=40);
+// Uma canelura: cilindro + esfera no topo (borda ondulada)
+module uma_canelura(h) {
+    cylinder(r=flute_r, h=h, $fn=24);
+    translate([0, 0, h]) sphere(r=flute_r, $fn=24);
+}
+
+// Posiciona todas as caneluras ao redor do contorno
+module posicionar_caneluras(h) {
+    // Semicírculo esquerdo — centro em [R, R]
+    for(i = [0 : n_semi]) {
+        a = 90 + i * 180 / n_semi;
+        translate([R + R*cos(a), R + R*sin(a), 0])
+            uma_canelura(h);
+    }
+    // Semicírculo direito — centro em [comp-R, R]
+    for(i = [0 : n_semi]) {
+        a = -90 + i * 180 / n_semi;
+        translate([comp-R + R*cos(a), R + R*sin(a), 0])
+            uma_canelura(h);
+    }
+    // Trechos retos (frente e fundo)
+    if (n_str > 0 && str > 0) {
+        for(i = [0 : n_str - 1]) {
+            x = R + (i + 0.5) * str / n_str;
+            translate([x, 0,    0]) uma_canelura(h);
+            translate([x, larg, 0]) uma_canelura(h);
         }
-        // Interno (cavidade)
-        translate([espessura, espessura, espessura])
-            hull() {
-                ri = max(r - espessura, 1);
-                cx2 = cx - 2*espessura;
-                cy2 = cy - 2*espessura;
-                for (x = [ri, cx2 - ri])
-                    for (y = [ri, cy2 - ri])
-                        translate([x, y, 0])
-                            cylinder(r=ri, h=cz, $fn=40);
-            }
     }
 }
 
-// === CORPO DA CAIXA ===
-module corpo() {
-    caixa_arredondada(comp, larg, corpo_alt, r_ext, esp);
-
-    // Divisórias internas
-    // Divisória longitudinal (divide em 2 fileiras)
-    translate([esp, larg/2 - esp/2, esp])
-        cube([comp - 2*esp, esp, corpo_alt - esp - 1]);
-
-    // Divisória transversal fileira 1
-    translate([comp/2 - esp/2, esp, esp])
-        cube([esp, larg/2 - esp, corpo_alt - esp - 1]);
-
-    // Divisória transversal fileira 2
-    translate([comp/2 - esp/2, larg/2, esp])
-        cube([esp, larg/2 - esp, corpo_alt - esp - 1]);
+// Cavidade interna lisa (oval)
+module cavidade_interna() {
+    translate([0, 0, base_h])
+        hull() {
+            translate([R, R, 0])
+                cylinder(r=R_cav, h=alt + flute_r + 1, $fn=80);
+            translate([comp-R, R, 0])
+                cylinder(r=R_cav, h=alt + flute_r + 1, $fn=80);
+        }
 }
 
-// === TAMPA ===
-module tampa() {
+// Base sólida (preenchimento entre as caneluras)
+module base_solida() {
+    hull() posicionar_caneluras(base_h);
+}
+
+// Bandeja completa
+module bandeja() {
     difference() {
-        // Corpo da tampa
-        caixa_arredondada(comp, larg, tampa_alt, r_ext, esp);
-
-        // Encaixe (rebaixo para sentar no corpo)
-        folga = 0.4;
-        translate([esp + folga, esp + folga, esp])
-            hull() {
-                ri = max(r_ext - esp - folga, 1);
-                cx2 = comp - 2*(esp + folga);
-                cy2 = larg - 2*(esp + folga);
-                for (x = [ri, cx2 - ri])
-                    for (y = [ri, cy2 - ri])
-                        translate([x, y, 0])
-                            cylinder(r=ri, h=tampa_alt, $fn=40);
-            }
+        union() {
+            base_solida();
+            posicionar_caneluras(alt);
+        }
+        cavidade_interna();
     }
-
-    // Puxador central na tampa
-    translate([comp/2, larg/2, tampa_alt])
-        cylinder(d=20, h=8, $fn=40);
-    translate([comp/2, larg/2, tampa_alt + 8])
-        sphere(d=14, $fn=40);
 }
 
 // === RENDERIZAÇÃO ===
-// Corpo posicionado na origem
-color("SandyBrown", 0.9)
-    corpo();
-
-// Tampa deslocada ao lado para visualização
-color("Peru", 0.85)
-    translate([comp + 20, 0, 0])
-        tampa();
+color("RosyBrown", 0.95)
+    bandeja();
